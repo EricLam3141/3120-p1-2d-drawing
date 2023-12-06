@@ -19,7 +19,7 @@ var skeleton=true;
 
 // 'draw_mode' are names of the different user interaction modes.
 // \todo Student Note: others are probably needed...
-var draw_mode = {DrawLines: 0, DrawTriangles: 1, ClearScreen: 2, None: 3};
+var draw_mode = {DrawLines: 0, DrawTriangles: 1, DrawQuads: 2, ClearScreen: 3, None: 4};
 
 // 'curr_draw_mode' tracks the active user interaction mode
 var curr_draw_mode = draw_mode.DrawLines;
@@ -141,18 +141,21 @@ function main() {
             "click",
             function () {
                 curr_draw_mode = draw_mode.DrawLines;
+                placedPoints.length = 0;
             });
 
     document.getElementById("TriangleButton").addEventListener(
             "click",
             function () {
                 curr_draw_mode = draw_mode.DrawTriangles;
+                placedPoints.length = 0;
             });    
     
     document.getElementById("QuadButton").addEventListener(
             "click",
             function () {
                 curr_draw_mode = draw_mode.DrawQuads;
+                placedPoints.length = 0;
             });    
 
     document.getElementById("ClearScreenButton").addEventListener(
@@ -289,8 +292,28 @@ function handleMouseDown(ev, gl, canvas, a_Position, u_FragColor)
                         curr_primitive_group.vertices.push([x, y]);
                     }
                     break;
-            }            
-            break;
+                    case draw_mode.DrawTriangles:
+                        // Triangle drawing logic
+                        if (placedPoints.length === 3) {
+                            // got final points of new triangle, so update the primitive arrays
+                            curr_primitive_group.vertices.push(placedPoints[0]);
+                            curr_primitive_group.vertices.push([x, y]);
+                            curr_primitive_group.vertices.push(placedPoints[2]);
+
+                            curr_primitive_group.vertices.push([x, y]);
+                            curr_primitive_group.vertices.push(placedPoints[1]);
+                            curr_primitive_group.vertices.push(placedPoints[0]);
+
+                            curr_primitive_group.colors.push(active_color);
+                            curr_primitive_group.colors.push(active_color);
+                            curr_primitive_group.colors.push(active_color);
+
+                            // Reset placedPoints after drawing a triangle
+                            placedPoints.length = 0;
+                        }
+                        break;    
+                    }
+           
         case 1:
         case 2:   
             /* accept either button 1 or 2 since different input devices seems to register
@@ -345,6 +368,17 @@ function drawObjects(gl, a_Position, u_FragColor)
                 }
                 break;
             // \todo draw triangles   
+            case 3: 
+                for(var i=0; i < Math.floor(sg.vertices.length/3); i++) {        
+                    gl.uniform4f(u_FragColor, sg.colors[i][0],sg.colors[i][1],sg.colors[i][2],1.0);            
+                    gl.drawArrays(gl.TRIANGLES, i*3, 3);
+                }
+                break;
+            case 4: 
+                for(var i=0; i < Math.floor(sg.vertices.length/4); i++) {        
+                    gl.uniform4f(u_FragColor, sg.colors[i][0],sg.colors[i][1],sg.colors[i][2],1.0);            
+                    gl.drawArrays(gl.TRIANGLE_STRIP, i*4, 4);
+                }
             // \todo draw quads
         }                            
     }
