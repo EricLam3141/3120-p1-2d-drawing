@@ -176,6 +176,7 @@ function main() {
                 function () {
                     deleteSelectedObject();
                 });
+    
             
     
     //\todo add event handlers for other buttons as required....            
