@@ -166,11 +166,16 @@ function main() {
                 // reset various globals
                 primitivesGroups.length = 0;
                 placedPoints.length = 0;
-//              // others... ?
+                // others... ?
                 
                 gl.clear(gl.COLOR_BUFFER_BIT);                
                 curr_draw_mode = draw_mode.DrawLines;
             });
+    document.getElementById("DeleteButton").addEventListener(
+                "click",
+                function () {
+                    deleteSelectedObject();
+                });
             
     
     //\todo add event handlers for other buttons as required....            
@@ -208,6 +213,7 @@ function main() {
             "mousedown",
             function (ev) {
                 handleMouseDown(ev, gl, canvas, a_Position, u_FragColor);
+                handleMouseClick(ev, gl, canvas);
                 });
 }
 
@@ -231,6 +237,33 @@ function main() {
  * @param {Number} u_FragColor - GLSL (uniform) color
  * @returns {undefined}
  */
+function deleteSelectedObject() {
+    if (selectedPrimitive.shapeIndex >= 0) {
+        primitivesGroups.splice(selectedPrimitive.shapeIndex, 1);
+        selectedPrimitive.shapeIndex = -1;
+        selectedPrimitive.primitiveIndex = 0;
+        drawObjects(gl, a_Position, u_FragColor);
+    }
+}
+
+function findSelectedPrimitive(x, y) {
+    var selectionThreshold = 0.008; // Adjust as needed
+
+    for (var i = 0; i < primitivesGroups.length; i++) {
+        var sg = primitivesGroups[i];
+        for (var j = 0; j < sg.vertices.length / 2; j++) {
+            var dist = pointLineDist([x, y], sg.vertices[j * 2], sg.vertices[j * 2 + 1]);
+
+            if (dist < selectionThreshold) {
+                // Return all vertices of the selected primitive
+                return { shapeIndex: i, primitiveIndex: j };
+            }
+        }
+    }
+
+    // No shape selected
+    return { shapeIndex: -1, primitiveIndex: 0 };
+}
 function handleMouseDown(ev, gl, canvas, a_Position, u_FragColor) 
 {
     var x = ev.clientX; // x coordinate of a mouse pointer
@@ -292,30 +325,65 @@ function handleMouseDown(ev, gl, canvas, a_Position, u_FragColor)
                         curr_primitive_group.vertices.push([x, y]);
                     }
                     break;
-                    case draw_mode.DrawTriangles:
-                        // Triangle drawing logic
-                        if (placedPoints.length === 3) {
-                            // got final points of new triangle, so update the primitive arrays
-                            curr_primitive_group.vertices.push(placedPoints[0]);
-                            curr_primitive_group.vertices.push([x, y]);
-                            curr_primitive_group.vertices.push(placedPoints[2]);
+                case draw_mode.DrawTriangles:
+                    // Triangle drawing logic
+                    if (placedPoints.length === 3) {
+                        // got final points of new triangle, so update the primitive arrays
+                        curr_primitive_group.vertices.push(placedPoints[0]);
+                        curr_primitive_group.vertices.push(placedPoints[1]);
 
-                            curr_primitive_group.vertices.push([x, y]);
-                            curr_primitive_group.vertices.push(placedPoints[1]);
-                            curr_primitive_group.vertices.push(placedPoints[0]);
+                        curr_primitive_group.vertices.push(placedPoints[1]);
+                        curr_primitive_group.vertices.push(placedPoints[2]);
 
-                            curr_primitive_group.colors.push(active_color);
-                            curr_primitive_group.colors.push(active_color);
-                            curr_primitive_group.colors.push(active_color);
-
-                            // Reset placedPoints after drawing a triangle
-                            placedPoints.length = 0;
+                        curr_primitive_group.vertices.push(placedPoints[2]);
+                        curr_primitive_group.vertices.push(placedPoints[0]);
+                        
+                        // Color
+                        for (var i = 0; i < 3; i++) {
+                            curr_primitive_group.colors.push([active_color[0],active_color[1],active_color[2]]);
                         }
-                        break;    
+
+                        // Reset placedPoints after drawing a triangle
+                        placedPoints.length = 0;
+                    } 
+                    break;    
+                case draw_mode.DrawQuads:
+                    // Triangle drawing logic
+                    if (placedPoints.length === 4) {
+
+                        // Wow this is actually horrible 
+                        curr_primitive_group.vertices.push(placedPoints[0]);
+                        curr_primitive_group.vertices.push(placedPoints[1]);
+
+                        curr_primitive_group.vertices.push(placedPoints[1]);
+                        curr_primitive_group.vertices.push(placedPoints[2]);
+
+                        curr_primitive_group.vertices.push(placedPoints[2]);
+                        curr_primitive_group.vertices.push(placedPoints[3]);
+
+                        curr_primitive_group.vertices.push(placedPoints[3]);
+                        curr_primitive_group.vertices.push(placedPoints[0]);
+
+                        // Color
+                        for (var i = 0; i < 4; i++) {
+                            curr_primitive_group.colors.push([active_color[0],active_color[1],active_color[2]]);
+                        }
+
+                        // Reset placedPoints after drawing a quad
+                        placedPoints.length = 0;
+                    }
+                    break;
                     }
            
         case 1:
         case 2:   
+        if (selectedPrimitive.shapeIndex === -1) {
+            selectedPrimitive = findSelectedPrimitive(x, y);
+        } else {
+            selectedPrimitive = { shapeIndex: -1, primitiveIndex: 0 };
+        }
+        drawObjects(gl, a_Position, u_FragColor);
+        break;
             /* accept either button 1 or 2 since different input devices seems to register
                the second button with a different number
 
@@ -368,10 +436,10 @@ function drawObjects(gl, a_Position, u_FragColor)
                 }
                 break;
             // \todo draw triangles   
-            case 3: 
-                for(var i=0; i < Math.floor(sg.vertices.length/3); i++) {        
-                    gl.uniform4f(u_FragColor, sg.colors[i][0],sg.colors[i][1],sg.colors[i][2],1.0);            
-                    gl.drawArrays(gl.TRIANGLES, i*3, 3);
+            case 3: // 3 vertices for each triangle
+                for (var i = 0; i < Math.floor(sg.vertices.length / 3); i++) {
+                    gl.uniform4f(u_FragColor, sg.colors[i][0], sg.colors[i][1], sg.colors[i][2], 1.0);
+                    gl.drawArrays(gl.TRIANGLES, i * 3, 3);
                 }
                 break;
             case 4: 

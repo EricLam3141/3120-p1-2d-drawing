@@ -293,7 +293,12 @@ function barycentric (p,p0, p1, p2)
     /*
      * \todo needs to be implemented
      */    
-    return [0,0,0];
+    var detT = (p1[1] - p2[1]) * (p0[0] - p2[0]) + (p2[0] - p1[0]) * (p0[1] - p2[1]);
+    var u = ((p1[1] - p2[1]) * (p[0] - p2[0]) + (p2[0] - p1[0]) * (p[1] - p2[1])) / detT;
+    var v = ((p2[1] - p0[1]) * (p[0] - p2[0]) + (p0[0] - p2[0]) * (p[1] - p2[1])) / detT;
+    var w = 1 - u - v;
+
+    return [u, v, w];
 }
 
 /**
@@ -309,7 +314,16 @@ function pointLineDist(p, p0, p1)
      /*
      * \todo needs to be implemented
      */    
-    return 0;
+
+    var x = p[0], y = p[1];
+    var x0 = p0[0], y0 = p0[1];
+    var x1 = p1[0], y1 = p1[1];
+
+    var numerator = Math.abs((x1 - x0) * (y0 - y) - (x0 - x) * (y1 - y0));
+    var denominator = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+
+    return numerator / denominator;
+
 }
 
 /**
