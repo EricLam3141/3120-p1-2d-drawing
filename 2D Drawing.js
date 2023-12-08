@@ -249,7 +249,7 @@ function deleteSelectedObject() {
 
 
 function findSelectedPrimitive(x, y) {
-    var selectionThreshold = 0.008; // Adjust as needed
+    var selectionThreshold = 0.008;
 
     for (var i = 0; i < primitivesGroups.length; i++) {
         var sg = primitivesGroups[i];
@@ -263,9 +263,24 @@ function findSelectedPrimitive(x, y) {
             if (primitiveSize === 2) {
                 // Line
                 dist = pointLineDist([x, y], sg.vertices[startIndex], sg.vertices[endIndex]);
-            } 
+            } else if (primitiveSize === 3) {
+                // Triangle
+                dist = pointLineDist([x, y], sg.vertices[startIndex], sg.vertices[startIndex + 1]);
+                var distToEdge2 = pointLineDist([x, y], sg.vertices[startIndex + 1], sg.vertices[startIndex + 2]);
+                var distToEdge3 = pointLineDist([x, y], sg.vertices[startIndex + 2], sg.vertices[startIndex]);
+                dist = Math.min(dist, distToEdge2, distToEdge3);
+            } else if (primitiveSize === 4) {
+                // Quad
+                dist = pointLineDist([x, y], sg.vertices[startIndex], sg.vertices[startIndex + 1]);
+                var distToEdge2 = pointLineDist([x, y], sg.vertices[startIndex + 1], sg.vertices[startIndex + 2]);
+                var distToEdge3 = pointLineDist([x, y], sg.vertices[startIndex + 2], sg.vertices[startIndex + 3]);
+                var distToEdge4 = pointLineDist([x, y], sg.vertices[startIndex + 3], sg.vertices[startIndex]);
+                dist = Math.min(dist, distToEdge2, distToEdge3, distToEdge4);
+            } else {
+                // Handle other primitive types if needed
+            }
+
             if (dist < selectionThreshold) {
-                // Return all vertices of the selected primitive
                 return { shapeIndex: i, primitiveIndex: j };
             }
         }
@@ -367,15 +382,10 @@ function handleMouseDown(ev, gl, canvas, a_Position, u_FragColor)
                     }
            
         case 1:      
-        if (selectedPrimitive.shapeIndex === -1) {
-            // No primitive is currently selected, try to find one
+        case 1: // Middle mouse button for selection
             selectedPrimitive = findSelectedPrimitive(x, y);
-        } else {
-            // A primitive is already selected, so clear the selection
-            selectedPrimitive = { shapeIndex: -1, primitiveIndex: 0 };
-        }
-        drawObjects(gl, a_Position, u_FragColor);
-        break;     
+            drawObjects(gl, a_Position, u_FragColor);
+            break;  
         case 2:   
     }
     
