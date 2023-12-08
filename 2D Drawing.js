@@ -174,7 +174,7 @@ function main() {
     document.getElementById("DeleteButton").addEventListener(
                 "click",
                 function () {
-                    deleteSelectedObject();
+                    deleteSelectedObject()
                 });
     
             
@@ -214,7 +214,6 @@ function main() {
             "mousedown",
             function (ev) {
                 handleMouseDown(ev, gl, canvas, a_Position, u_FragColor);
-                handleMouseClick(ev, gl, canvas);
                 });
 }
 
@@ -238,6 +237,7 @@ function main() {
  * @param {Number} u_FragColor - GLSL (uniform) color
  * @returns {undefined}
  */
+
 function deleteSelectedObject() {
     if (selectedPrimitive.shapeIndex >= 0) {
         primitivesGroups.splice(selectedPrimitive.shapeIndex, 1);
@@ -247,14 +247,23 @@ function deleteSelectedObject() {
     }
 }
 
+
 function findSelectedPrimitive(x, y) {
     var selectionThreshold = 0.008; // Adjust as needed
 
     for (var i = 0; i < primitivesGroups.length; i++) {
         var sg = primitivesGroups[i];
-        for (var j = 0; j < sg.vertices.length / 2; j++) {
-            var dist = pointLineDist([x, y], sg.vertices[j * 2], sg.vertices[j * 2 + 1]);
+        var primitiveSize = sg.primitiveSize;
 
+        for (var j = 0; j < sg.vertices.length / primitiveSize; j++) {
+            var startIndex = j * primitiveSize;
+            var endIndex = startIndex + primitiveSize - 1;
+
+            var dist;
+            if (primitiveSize === 2) {
+                // Line
+                dist = pointLineDist([x, y], sg.vertices[startIndex], sg.vertices[endIndex]);
+            } 
             if (dist < selectionThreshold) {
                 // Return all vertices of the selected primitive
                 return { shapeIndex: i, primitiveIndex: j };
@@ -293,14 +302,20 @@ function handleMouseDown(ev, gl, canvas, a_Position, u_FragColor)
                     curr_primitive_group = new PrimitivesGroup;
                     primitivesGroups.push(curr_primitive_group);
                     curr_primitive_group.buffer = gl.createBuffer();
-                    if (!curr_primitive_group.buffer) 
-		    {
+                    if (!curr_primitive_group.buffer) {
                         console.log('Failed to create the buffer object');
                         return -1;
                     }        
 		// FIXME Skeleton
-		if(skeleton) 
-		    {curr_primitive_group.primitiveSize = 2; }
+		if(curr_draw_mode === draw_mode.DrawLines) {
+            curr_primitive_group.primitiveSize = 2; 
+        }
+        else if(curr_draw_mode === draw_mode.DrawTriangles) {
+            curr_primitive_group.primitiveSize = 3; 
+        }
+        else if(curr_draw_mode === draw_mode.DrawQuads) {
+            curr_primitive_group.primitiveSize = 4; 
+        }
                 }
             }
 	    // record last draw mode
@@ -328,69 +343,40 @@ function handleMouseDown(ev, gl, canvas, a_Position, u_FragColor)
                     break;
                 case draw_mode.DrawTriangles:
                     // Triangle drawing logic
-                    if (placedPoints.length === 3) {
-                        // got final points of new triangle, so update the primitive arrays
-                        curr_primitive_group.vertices.push(placedPoints[0]);
-                        curr_primitive_group.vertices.push(placedPoints[1]);
-
-                        curr_primitive_group.vertices.push(placedPoints[1]);
-                        curr_primitive_group.vertices.push(placedPoints[2]);
-
-                        curr_primitive_group.vertices.push(placedPoints[2]);
-                        curr_primitive_group.vertices.push(placedPoints[0]);
-                        
-                        // Color
-                        for (var i = 0; i < 3; i++) {
-                            curr_primitive_group.colors.push([active_color[0],active_color[1],active_color[2]]);
-                        }
-
-                        // Reset placedPoints after drawing a triangle
+                    if (placedPoints.length === 3) {			
+                        // got final point of new line, so update the primitive arrays
+                        curr_primitive_group.vertices.push([x, y]);
+                        curr_primitive_group.colors.push([active_color[0],active_color[1],active_color[2]]);
                         placedPoints.length = 0;
-                    } 
+                    } else {						
+                        // gathering placedPoints of new line segment, so collect placedPoints
+                        curr_primitive_group.vertices.push([x, y]);
+                    }
                     break;    
                 case draw_mode.DrawQuads:
-                    // Triangle drawing logic
-                    if (placedPoints.length === 4) {
-
-                        // Wow this is actually horrible 
-                        curr_primitive_group.vertices.push(placedPoints[0]);
-                        curr_primitive_group.vertices.push(placedPoints[1]);
-
-                        curr_primitive_group.vertices.push(placedPoints[1]);
-                        curr_primitive_group.vertices.push(placedPoints[2]);
-
-                        curr_primitive_group.vertices.push(placedPoints[2]);
-                        curr_primitive_group.vertices.push(placedPoints[3]);
-
-                        curr_primitive_group.vertices.push(placedPoints[3]);
-                        curr_primitive_group.vertices.push(placedPoints[0]);
-
-                        // Color
-                        for (var i = 0; i < 4; i++) {
-                            curr_primitive_group.colors.push([active_color[0],active_color[1],active_color[2]]);
-                        }
-
-                        // Reset placedPoints after drawing a quad
+                    if (placedPoints.length === 4) {			
+                        // got final point of new line, so update the primitive arrays
+                        curr_primitive_group.vertices.push([x, y]);
+                        curr_primitive_group.colors.push([active_color[0],active_color[1],active_color[2]]);
                         placedPoints.length = 0;
+                    } else {						
+                        // gathering placedPoints of new line segment, so collect placedPoints
+                        curr_primitive_group.vertices.push([x, y]);
                     }
                     break;
                     }
            
-        case 1:
-        case 2:   
+        case 1:      
         if (selectedPrimitive.shapeIndex === -1) {
+            // No primitive is currently selected, try to find one
             selectedPrimitive = findSelectedPrimitive(x, y);
         } else {
+            // A primitive is already selected, so clear the selection
             selectedPrimitive = { shapeIndex: -1, primitiveIndex: 0 };
         }
         drawObjects(gl, a_Position, u_FragColor);
-        break;
-            /* accept either button 1 or 2 since different input devices seems to register
-               the second button with a different number
-
-	       so handle primitive selection
-            */
-
+        break;     
+        case 2:   
     }
     
     drawObjects(gl,a_Position, u_FragColor);            
